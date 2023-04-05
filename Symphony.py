@@ -319,12 +319,6 @@ def write_complex_data():
             Manager.rom.write((0x16).to_bytes(1, "little"))
         else:
             Manager.rom.write((0x14).to_bytes(1, "little"))
-        #Remove all stunframes from enemies
-        offset = check_offset(int(offsets["Enemy"][i]["EnemyAddress"], 16) + 38)
-        Manager.rom.seek(offset)
-        if int.from_bytes(Manager.rom.read(1), "little") < 0x40:
-            Manager.rom.seek(offset)
-            Manager.rom.write((0x40).to_bytes(1, "little"))
         #Attack
         for e in range(len(offsets["Enemy"][i]["AttackAddress"])):
             #Attack correction
@@ -346,12 +340,6 @@ def write_complex_data():
                 Manager.rom.write((0x12).to_bytes(1, "little"))
             else:
                 Manager.rom.write((0x00).to_bytes(1, "little"))
-            #Attack no stun
-            offset = check_offset(int(offsets["Enemy"][i]["AttackAddress"][e], 16) + 38)
-            Manager.rom.seek(offset)
-            if int.from_bytes(Manager.rom.read(1), "little") < 0x40:
-                Manager.rom.seek(offset)
-                Manager.rom.write((0x40).to_bytes(1, "little"))
     #Display some damage and sound cues on enemies that lack them
     #Intro Dracula shown damage
     Manager.rom.seek(0xB7677)
@@ -370,22 +358,6 @@ def write_complex_data():
     #Shaft Orb shown damage
     Manager.rom.seek(0xB92B7)
     Manager.rom.write((0x08).to_bytes(1, "little"))
-    #Widen some hitboxes so that it is no longer possible to crouch below them
-    #Discus Lord saw
-    Manager.rom.seek(0xB65DA)
-    Manager.rom.write((0x1818).to_bytes(2, "little"))
-    #Hippogryph fire breath
-    Manager.rom.seek(0xB8ECA)
-    Manager.rom.write((0x0A02).to_bytes(2, "little"))
-    #Cerberus fireball
-    Manager.rom.seek(0xB99AA)
-    Manager.rom.write((0x0C0A).to_bytes(2, "little"))
-    #Medusa laser
-    Manager.rom.seek(0xB9A4A)
-    Manager.rom.write((0x0220).to_bytes(2, "little"))
-    #Remove the hitbox from Dracula's main body to only leave the hands vulnerable
-    Manager.rom.seek(0xB9C02)
-    Manager.rom.write((0x0000).to_bytes(2, "little"))
     
     #EQUIPMENT
     for i in ["Enemy", "Equipment"]:
@@ -395,25 +367,19 @@ def write_complex_data():
             else:
                 offset = int(offsets[i][e], 16)
             #Resistances
-            if e == "Galamoth Head":
-                weak = 0
-                strong = 0
-                immune = 0xFFE0
-                absorb = 0
-            else:
-                weak = 0
-                strong = 0
-                immune = 0
-                absorb = 0
-                for o in attributes:
-                    if values[i][e]["Resistances"][o] == 0:
-                        weak += attributes[o]
-                    elif values[i][e]["Resistances"][o] == 2:
-                        strong += attributes[o]
-                    elif values[i][e]["Resistances"][o] == 3:
-                        immune += attributes[o]
-                    elif values[i][e]["Resistances"][o] == 4:
-                        absorb += attributes[o]
+            weak = 0
+            strong = 0
+            immune = 0
+            absorb = 0
+            for o in attributes:
+                if values[i][e]["Resistances"][o] == 0:
+                    weak += attributes[o]
+                elif values[i][e]["Resistances"][o] == 2:
+                    strong += attributes[o]
+                elif values[i][e]["Resistances"][o] == 3:
+                    immune += attributes[o]
+                elif values[i][e]["Resistances"][o] == 4:
+                    absorb += attributes[o]
             Manager.rom.seek(check_offset(offset + int(dictionary["Properties"][i]["Weak"]["Offset"], 16)))
             Manager.rom.write(weak.to_bytes(dictionary["Properties"][i]["Weak"]["Length"], "little"))
             Manager.rom.seek(check_offset(offset + int(dictionary["Properties"][i]["Strong"]["Offset"], 16)))
@@ -422,33 +388,6 @@ def write_complex_data():
             Manager.rom.write(immune.to_bytes(dictionary["Properties"][i]["Immune"]["Length"], "little"))
             Manager.rom.seek(check_offset(offset + int(dictionary["Properties"][i]["Absorb"]["Offset"], 16)))
             Manager.rom.write(absorb.to_bytes(dictionary["Properties"][i]["Absorb"]["Length"], "little"))
-
-    #HANDITEM SPELL
-    for i in ["HandItem", "Spell"]:
-        for e in offsets[i]:
-            #Element
-            total = 0
-            for o in attributes:
-                if values[i][e]["Element"][o]:
-                    total += attributes[o]
-            Manager.rom.seek(check_offset(int(offsets[i][e], 16) + int(dictionary["Properties"][i]["Element"]["Offset"], 16)))
-            Manager.rom.write(total.to_bytes(dictionary["Properties"][i]["Element"]["Length"], "little"))
-
-    #SHOP
-    #Make shop prices dynamic with the items that are found on each slot
-    #This prevents being able to easily purchase an unreasonable amount of broken items
-    for i in offsets["Shop"]:
-        Manager.rom.seek(int(offsets["Shop"][i], 16) - 4)
-        if int.from_bytes(Manager.rom.read(1), "little") != 0:
-            shift = 0xA9
-        else:
-            shift = 0x00
-        Manager.rom.seek(int(offsets["Shop"][i], 16) - 2)
-        price = dictionary["ItemPrice"][dictionary["ItemId"]["0x{:04x}".format(int.from_bytes(Manager.rom.read(2), "little") + shift)]]
-        price = price & 0xFFFFFFFF
-        Manager.rom.write(int(price).to_bytes(4, "little"))
-    Manager.rom.seek(0x47A31E8)
-    Manager.rom.write((100).to_bytes(4, "little"))
 
     #STAT
     #Change the starting stats
@@ -520,20 +459,6 @@ def write_complex_data():
     Manager.rom.write((0x82).to_bytes(1, "little"))
     Manager.rom.seek(0xF2AC3)
     Manager.rom.write((0x82).to_bytes(1, "little"))
-
-    #MISC
-    #Just some personal tweaks
-    Manager.rom.seek(0x4369E87)
-    Manager.rom.write(str.encode("KOJI  IGA"))
-    Manager.rom.seek(0x4369EE1)
-    Manager.rom.write(str.encode("KOJI  IGA"))
-    Manager.rom.seek(0x4369FBC)
-    Manager.rom.write(str.encode("KOJI  IGA"))
-    Manager.rom.seek(0x3A06851)
-    Manager.rom.write((0x40).to_bytes(1, "little"))
-    #
-    #Manager.rom.seek(0x4678F00)
-    #Manager.rom.write((0x0022).to_bytes(2, "little"))
 
 def create_enemy_log():
     log = {}
